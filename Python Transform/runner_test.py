@@ -1,11 +1,20 @@
+import argparse
 import pandas as pd
-import openpyxl
-import openpyxl.styles
 import traceback
 
+# Create a parser to handle command-line arguments
+parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
+
+# Add arguments for CSV list and output report path
+parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=True)
+parser.add_argument('--output_report_path', help='Path for the output Excel report', required=True)
+
+# Parse the command-line arguments
+args = parser.parse_args()
+
+# Access the arguments using args.csv_list and args.output_report_path in your code
 
 def transform(csv_list: list, output_report_path):
-    # Format pd.DF as xlsx
     def format_xlsx(pivot_table: pd.DataFrame, sheet: str = 'Отчет 1',
                     name: str = "pivot_table_gradient_colorscale.xlsx"):
         # Create an Excel writer and export the pivot table to an Excel file
@@ -67,17 +76,16 @@ def transform(csv_list: list, output_report_path):
         # Convert to xlsx and apply colorscale
         format_xlsx(pivot_table, name=output_report_path)
         print('Exit Code 0')
+        return 0
     except ValueError or KeyError:
         traceback.print_exc()
         print('Exit Code 1 (Pandas Error)')
-    finally:
+        return 1
+    except Exception:
         traceback.print_exc()
         print('Exit Code 2 (Unknown Error)')
-
-
+        return 2
 
 if __name__ == '__main__':
-    transform(csv_list=['./Reports/01-08.csv', './Reports/02-08.csv', './Reports/03-08.csv',
-                        './Reports/04-08.csv', './Reports/05-08.csv', './Reports/06-08.csv',
-                        './Reports/07-08.csv', './Reports/08-08.csv'],
-              output_report_path="pivot_table_gradient_colorscale.xlsx")
+    transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
+

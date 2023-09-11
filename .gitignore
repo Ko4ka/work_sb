@@ -3,6 +3,7 @@ raw/
 Reports/
 *.xlsx
 *.csv
+example_reports/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
