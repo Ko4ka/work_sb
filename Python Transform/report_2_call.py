@@ -1,10 +1,7 @@
 import argparse
 import pandas as pd
 import traceback
-from openpyxl import Workbook
 from openpyxl.formatting.rule import ColorScaleRule
-from openpyxl.styles import PatternFill
-from openpyxl.styles import numbers
 from openpyxl.styles import Alignment
 
 # Create a parser to handle command-line arguments
