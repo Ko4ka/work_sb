@@ -1,8 +1,11 @@
 import pandas as pd
-import openpyxl
-import openpyxl.styles
 import traceback
 
+import subprocess
+import sys
+
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def transform(csv_list: list, output_report_path):
     # Format pd.DF as xlsx
@@ -70,14 +73,13 @@ def transform(csv_list: list, output_report_path):
     except ValueError or KeyError:
         traceback.print_exc()
         print('Exit Code 1 (Pandas Error)')
-    finally:
+    except Exception:
         traceback.print_exc()
         print('Exit Code 2 (Unknown Error)')
 
 
 
 if __name__ == '__main__':
-    transform(csv_list=['./Reports/01-08.csv', './Reports/02-08.csv', './Reports/03-08.csv',
-                        './Reports/04-08.csv', './Reports/05-08.csv', './Reports/06-08.csv',
-                        './Reports/07-08.csv', './Reports/08-08.csv'],
+    install('xlsxwriter')
+    transform(csv_list=['C:/Users/Alex/Work_python/work_sb/Python Transform/Reports/01-08.csv'],
               output_report_path="pivot_table_gradient_colorscale.xlsx")
