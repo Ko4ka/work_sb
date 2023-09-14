@@ -30,8 +30,8 @@ def transform(csv_list: list, output_report_path):
             start_type="num",
             start_value=min_percent,         # Set the minimum value to 0
             start_color="A6D86E",  # Green for minimum value
-            mid_type="percentile",
-            mid_value=75,          # Set the midpoint to 50%
+            mid_type="num",
+            mid_value=(max_percent-min_percent)/3,          # Set the midpoint to 50%
             mid_color="FCFAA0",    # Yellow for mid-value
             end_type = "num",
             end_value=max_percent,           # Set the maximum value to 1
@@ -43,8 +43,8 @@ def transform(csv_list: list, output_report_path):
             start_type="num",
             start_value=min_errors,         # Set the minimum value to 0
             start_color="A6D86E",  # Green for minimum value
-            mid_type="percentile",
-            mid_value=75,          # Set the midpoint to 50%
+            mid_type="num",
+            mid_value=(max_errors-min_errors)/3,          # Set the midpoint to 50%
             mid_color="FCFAA0",    # Yellow for mid-value
             end_type = "num",
             end_value=max_errors,           # Set the maximum value to 1
