@@ -80,6 +80,6 @@ def transform(csv_list: list, output_report_path):
 
 
 if __name__ == '__main__':
-    install('xlsxwriter')
-    transform(csv_list=['C:/Users/Alex/Work_python/work_sb/Python Transform/Reports/01-08.csv'],
-              output_report_path="pivot_table_gradient_colorscale.xlsx")
+    #install('xlsxwriter')
+    transform(csv_list=['C:/Users/Alex/Work_python/work_sb/Python Transform/old_mat.csv'],
+              output_report_path="C:/Users/Alex/Work_python/work_sb/Python Transform/pivot_table_gradient_colorscale.xlsx")
