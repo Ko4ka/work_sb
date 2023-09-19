@@ -78,11 +78,15 @@ def transform(csv_list: list, output_report_path):
         print('Exit Code 0')
         return 0
     except ValueError or KeyError:
-        traceback.print_exc()
+        e = traceback.format_exc()
+        with open('error_log.txt', 'w') as log:
+            log.write(e)
         print('Exit Code 1 (Pandas Error)')
         return 1
-    except Exception:
-        traceback.print_exc()
+    except Exception as e:
+        e = traceback.format_exc()
+        with open('error_log.txt', 'w') as log:
+            log.write(e)
         print('Exit Code 2 (Unknown Error)')
         return 2
 
