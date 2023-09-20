@@ -80,6 +80,7 @@ def transform(csv_list: list, output_report_path):
                                             fill_value=0)
         # Convert to xlsx and apply colorscale
         format_xlsx(pivot_table, name=output_report_path)
+        logger.info('Script completed successfully at %s', datetime.datetime.now())
         print('Exit Code 0')
         return 0
     except ValueError or KeyError as e:
@@ -93,6 +94,7 @@ def transform(csv_list: list, output_report_path):
 
 if __name__ == '__main__':
     try:
+        logger.info('Script started at %s', datetime.datetime.now())
         # Capture the original stderr
         original_stderr = sys.stderr
         # Redirect stderr to the custom stream
