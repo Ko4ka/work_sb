@@ -20,7 +20,7 @@ class StdErrLogger(io.StringIO):
         logger.error(f'\n{datetime.datetime.now()}\nExit Code 3 (Input Error): %s', message)
 
 def transform(csv_list: list, output_report_path):
-    def format_xlsx(pivot_table: pd.DataFrame, sheet: str = 'Отчет 1',
+    def format_xlsx(pivot_table: pd.DataFrame, sheet: str = 'Общий',
                     name: str = "pivot_table_gradient_colorscale.xlsx"):
         # Create an Excel writer and export the pivot table to an Excel file
         excel_file_path = name
