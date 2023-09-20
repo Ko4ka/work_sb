@@ -150,7 +150,7 @@ if __name__ == '__main__':
         # Capture the original stderr
         original_stderr = sys.stderr
         # Redirect stderr to the custom stream
-        sys.stderr = stderr_logger = StdErrLogger()
+        #sys.stderr = stderr_logger = StdErrLogger()
         # Create a parser to handle command-line arguments
         parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
         # Add arguments for CSV list and output report path

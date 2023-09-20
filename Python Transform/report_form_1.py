@@ -1,9 +1,8 @@
 import argparse
 import pandas as pd
 import logging
-import sys
 import datetime
-import io
+
 
 # Add Logging
 logger = logging.getLogger()
@@ -13,11 +12,9 @@ fh = logging.FileHandler('transform_logs.log')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
-class StdErrLogger(io.StringIO):
-    def write(self, message):
-        # Log the error message
-        logger.error(f'\n{datetime.datetime.now()}\nExit Code 3 (Input Error): %s', message)
 
+# Add name
+NAME = 'report_form_1.py'
 
 def transform(csv_list: list, output_report_path):
     def format_xlsx(pivot_table: pd.DataFrame, sheet: str = 'Отчет общий',
@@ -162,40 +159,33 @@ def transform(csv_list: list, output_report_path):
 
         # Create excel File
         format_xlsx(mega_pivot, name=output_report_path, percent=[max_percent, min_percent], errors=[max_errors, min_errors])
-        logger.info('Script completed successfully at %s', datetime.datetime.now())
+        logger.info(f'{NAME} Exit Code 0 (Success) %s', datetime.datetime.now())
         print('Exit Code 0')
         return 0
     except ValueError or KeyError as e:
-        logger.exception(f'\n{datetime.datetime.now()}\nExit Code 1 (Pandas Error): %s', e)
+        logger.exception(f'{NAME} Exit Code 1 (Pandas Error): {datetime.datetime.now()} %s', e)
         print('Exit Code 1 (Pandas Error)')
         return 1
     except Exception as e:
-        logger.exception(f'\n{datetime.datetime.now()}\nExit Code 2 (Unknown Error): %s', e)
+        logger.exception(f'{NAME} Exit Code 2 (Unknown Error): {datetime.datetime.now()} %s', str(e))
         print('Exit Code 2 (Unknown Error)')
         return 2
 
 if __name__ == '__main__':
     try:
-        logger.info('Script started at %s', datetime.datetime.now())
-        # Capture the original stderr
-        original_stderr = sys.stderr
-        # Redirect stderr to the custom stream
-        sys.stderr = stderr_logger = StdErrLogger()
+        logger.info(f'{NAME} \nScript started at %s', datetime.datetime.now())
         # Create a parser to handle command-line arguments
         parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
         # Add arguments for CSV list and output report path
-        parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=True)
-        parser.add_argument('--output_report_path', help='Path for the output Excel report', required=True)
+        parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=False)
+        parser.add_argument('--output_report_path', help='Path for the output Excel report', required=False)
         # Parse the command-line arguments
         args = parser.parse_args()
-        # Check if required arguments are missing
+        # Check Input
         if not args.csv_list or not args.output_report_path:
-            raise ValueError('One or both required arguments are missing')
-        # If required arguments are present, proceed with transformation
+            raise ValueError(f'One or both required arguments are missing')
         transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
     except Exception as ee:
-        logger.exception(f'\n{datetime.datetime.now()}\nExit Code 4 (Script Error): %s', ee)
-    finally:
-        # Restore the original stderr
-        sys.stderr = original_stderr
+        logger.exception(f'{NAME} Exit Code 3 (Script Error): {datetime.datetime.now()} %s', ee)
+
 
