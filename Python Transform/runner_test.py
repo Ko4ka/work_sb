@@ -4,6 +4,7 @@ import traceback
 import logging
 import sys
 import datetime
+import io
 
 # Add Logging
 logger = logging.getLogger()
@@ -12,6 +13,11 @@ logger.setLevel(logging.DEBUG)
 fh = logging.FileHandler('transform_logs.log')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
+
+class StdErrLogger(io.StringIO):
+    def write(self, message):
+        # Log the error message
+        logger.error(f'\n{datetime.datetime.now()}\nExit Code 3 (Input Error): %s', message)
 
 def transform(csv_list: list, output_report_path):
     def format_xlsx(pivot_table: pd.DataFrame, sheet: str = 'Отчет 1',
@@ -87,26 +93,25 @@ def transform(csv_list: list, output_report_path):
 
 if __name__ == '__main__':
     try:
+        # Capture the original stderr
+        original_stderr = sys.stderr
+        # Redirect stderr to the custom stream
+        sys.stderr = stderr_logger = StdErrLogger()
         # Create a parser to handle command-line arguments
         parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
-
         # Add arguments for CSV list and output report path
         parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=True)
         parser.add_argument('--output_report_path', help='Path for the output Excel report', required=True)
-
-        # Capture standard error (stderr) and redirect it to the logger
-        sys.stderr = logging.StreamHandler(fh)
-
         # Parse the command-line arguments
         args = parser.parse_args()
-
         # Check if required arguments are missing
         if not args.csv_list or not args.output_report_path:
-            logger.error(f'\n{datetime.datetime.now()}\nExit Code 3 (Input Error): One or both required arguments are missing')
-            print('Exit Code 3 (Input Error): One or both required arguments are missing')
-        else:
-            # If required arguments are present, proceed with transformation
-            transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
+            raise ValueError('One or both required arguments are missing')
+        # If required arguments are present, proceed with transformation
+        transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
     except Exception as ee:
         logger.exception(f'\n{datetime.datetime.now()}\nExit Code 4 (Script Error): %s', ee)
+    finally:
+        # Restore the original stderr
+        sys.stderr = original_stderr
 
