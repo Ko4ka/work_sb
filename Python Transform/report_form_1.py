@@ -92,11 +92,7 @@ def transform(csv_list: list, output_report_path):
         # Apply the white background to the entire worksheet
         worksheet.set_column(0, 0, 60, white_fill_format)
         worksheet.set_column(1, 100, 18, white_fill_format)
-        '''# Custom header format
-        header_format = workbook.add_format(
-                        {'bold': True, 'border': 1, 'bg_color': '#AFEFEF','align': 'center'})
-        for col_num, value in enumerate(mega_pivot.columns.values):
-                        worksheet.write(0, col_num + 1, str(value)[:-19], header_format)'''
+
         # Save the Excel file
         writer.save()
         print(f'file: {name} -- Transformed 0')
