@@ -1,8 +1,6 @@
 import argparse
 import pandas as pd
 import traceback
-from openpyxl.formatting.rule import ColorScaleRule
-from openpyxl.styles import Alignment
 
 # Create a parser to handle command-line arguments
 parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
