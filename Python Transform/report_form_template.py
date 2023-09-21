@@ -19,17 +19,35 @@ def transform(csv_list: list, output_report_path):
 
     '''Pandas Code'''
     def create_pivot(df, rpc=False):
-       pass
+        def run(df):
+           return df
+       # Create RPC-only frame
+        rpc_df = df[df['Контактное лицо'] == 'Должник']
+        pivot_all, percent, errors = run(df)
+        del df
+        pivot_rpc, _, _ = run(rpc_df)
+        del rpc_df
+        return pivot_all, rpc_df, percent, errors
 
     '''Excel Code'''
-    def format_xlsx(pivot_table: pd.DataFrame,
+    def format_xlsx(pivot_all: pd.DataFrame,
+                    pivot_rpc: pd.DataFrame,
                     name: str = "pivot_table_2_call_lists.xlsx", **kwargs):
-        pass
+        # Settings
+        with pd.ExcelWriter(excel_file_path=output_report_path, engine='xlsxwriter') as writer:
+            '''Function Start'''
+            def create_sheet(pivot_table, sheet_name):
+                pass
+            # Create Sheets
+            create_sheet(pivot_all, 'Все звонки')
+            create_sheet(pivot_rpc, 'RPC')
+            # Create Summary Sheet
+        print(f'file: {name} -- Transformed 0')
 
     '''Run Script'''
     df = prep_data(csv_list=csv_list)
-    df, percent, errors = create_pivot(df, rpc=False)
-    format_xlsx(df,
+    df, rpc_df, percent, errors = create_pivot(df, rpc=False)
+    format_xlsx(df, rpc_df,
                 name=output_report_path,
                 percent=percent,
                 errors=errors)
