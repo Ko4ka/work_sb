@@ -1,75 +1,24 @@
 import argparse
 import pandas as pd
 import logging
-import sys
 import datetime
-import io
 
 # Add Logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-# create file handler which logs even debug messages
 fh = logging.FileHandler('transform_logs.log')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
-
-class StdErrLogger(io.StringIO):
-    def write(self, message):
-        # Log the error message
-        logger.error(f'\n{datetime.datetime.now()}\nExit Code 3 (Input Error): %s', message)
+# Add name
+NAME = 'report_form_2'
 
 def transform(csv_list: list, output_report_path):
-    def format_xlsx(pivot_table: pd.DataFrame, sheet: str = 'Общий',
-                    name: str = "pivot_table_2_call_lists.xlsx", **kwargs):
-        # Specify the Excel file path
-        excel_file_path = name
-        min_errors = kwargs['errors'][1]
-        max_errors = kwargs['errors'][0]
-        # Create a color scale conditional formatting rule
-        color_scale_rule_errors = {
-                        'type': '3_color_scale',
-                        'min_color': '#A6D86E',  # Green
-                        'mid_color': '#FCFAA0',  # White (for NaN)
-                        'max_color': '#e85f5f',  # Red
-                        'min_type': 'num',
-                        'min_value': min_errors,
-                        'mid_type': 'num',
-                        'mid_value': (max_errors-min_errors)/4,
-                        'max_type': 'num',
-                        'max_value': max_errors
-                        }
-
-        # Create a Pandas Excel writer using xlsxwriter as the engine
-        writer = pd.ExcelWriter(excel_file_path, engine='xlsxwriter')
-
-        # Write the DataFrame to the Excel file
-        pivot_table.to_excel(writer, sheet_name=sheet)
-
-        # Access the xlsxwriter workbook and worksheet objects
-        workbook = writer.book
-        worksheet = writer.sheets['Общий']
-        # Define a white fill format
-        white_fill_format = workbook.add_format({'text_wrap': True, 'bg_color': '#FFFFFF', 'border': 0})
-        # Apply the white background to the entire worksheet
-        worksheet.set_column(0, 0, 25, white_fill_format)
-        worksheet.set_column(1, 1, 30, white_fill_format)
-        worksheet.set_column(2, 100, 9, white_fill_format)
-
-        percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF', 'border': 0})
-
-        for i, j in enumerate(pivot_table.head()):
-            if j[1] == 'Ошб.%':
-                worksheet.set_column(i+2, i+2, None, percentage_format)
-                worksheet.conditional_format(0, i+2, 999, i+2, color_scale_rule_errors)
-
-        # Save the Excel file
-        writer.save()
-        print(f'file: {name} -- Transformed 0')
-    try:
-        # Concatenate all csv to a single biiig df
+    '''Preprocess'''
+    def prep_data(csv_list=csv_list):
+        # Concatenate all csv to a single big df
         df = pd.DataFrame()
         for i in csv_list:
-            df_add = pd.read_csv(i, sep=';', header=0)
+            df_add = pd.read_csv(i, sep=';', encoding='utf-8', header=0)
             df = pd.concat([df, df_add], ignore_index=True)
         # Fix мультидоговоры for RSB
         mask = df['№ п/п'].isna()
@@ -77,8 +26,13 @@ def transform(csv_list: list, output_report_path):
         # Convert the 'Длительность звонка' column to Timedelta
         df['Длительность звонка'] = pd.to_timedelta(df['Длительность звонка'])
         df['Ошибки'] = df['Результат автооценки'] != 100
-        df['Дата'] = df['Дата звонка'].str.split(' ').str[0]
+        df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
+        df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
         df = df.reset_index(drop=True)
+        return df
+
+    '''Pandas Code'''
+    def create_pivot(df, rpc=False):
         # 2. Create the pivot table
         def create_multiindex(dataframe, sub_index:str):
             # Create MultiIndex
@@ -111,14 +65,11 @@ def transform(csv_list: list, output_report_path):
         pivot_df_errors = create_multiindex(pivot_df_errors, 'Ошб.(шт.)')
         pivot_df_mean = create_multiindex(pivot_df_mean, 'Ср.АО')
         pivot_df_error_rate = create_multiindex(pivot_df_error_rate, 'Ошб.%')
-
         # Create a list of the DataFrames you want to merge
         dfs_to_merge = [pivot_df_calls, pivot_df_errors, pivot_df_mean, pivot_df_error_rate]
-
         # Initialize an empty DataFrame with the same index as the original DataFrames
         merged_df = pd.DataFrame(index=pivot_df_calls.index)
-
-        '''CREATE MULTIINDEX'''
+        # Create Multiindex
         multi_index = []
         # Iterate through the DataFrames and concatenate their columns in the desired order
         for num, column in enumerate(pivot_df_calls.columns):
@@ -130,42 +81,79 @@ def transform(csv_list: list, output_report_path):
                         multi_index.append(col_name)
                         merged_df[col_name] = dataframe.iloc[:, num]
         merged_df.columns = pd.MultiIndex.from_tuples(multi_index)
-        # Create excel File
-        format_xlsx(merged_df, name=output_report_path, errors=[max_error_rate, min_error_rate])
-        logger.info('Script completed successfully at %s', datetime.datetime.now())
-        print('Exit Code 0')
-        return 0
-    except ValueError or KeyError as e:
-        logger.exception(f'\n{datetime.datetime.now()}\nExit Code 1 (Pandas Error): %s', e)
-        print('Exit Code 1 (Pandas Error)')
-        return 1
-    except Exception as e:
-        logger.exception(f'\n{datetime.datetime.now()}\nExit Code 2 (Unknown Error): %s', e)
-        print('Exit Code 2 (Unknown Error)')
-        return 2
 
+        return merged_df, [max_error_rate, min_error_rate]
+
+    '''Excel Code'''
+    def format_xlsx(pivot_table: pd.DataFrame,
+                    name: str = "pivot_table_2_call_lists.xlsx", **kwargs):
+    # Specify the Excel file path
+        excel_file_path = name
+        min_errors = kwargs['errors'][1]
+        max_errors = kwargs['errors'][0]
+        # Create a color scale conditional formatting rule
+        color_scale_rule_errors = {
+                        'type': '3_color_scale',
+                        'min_color': '#A6D86E',  # Green
+                        'mid_color': '#FCFAA0',  # White (for NaN)
+                        'max_color': '#e85f5f',  # Red
+                        'min_type': 'num',
+                        'min_value': min_errors,
+                        'mid_type': 'num',
+                        'mid_value': (max_errors-min_errors)/4,
+                        'max_type': 'num',
+                        'max_value': max_errors
+                        }
+
+        # Create a Pandas Excel writer using xlsxwriter as the engine
+        writer = pd.ExcelWriter(excel_file_path, engine='xlsxwriter')
+
+        # Write the DataFrame to the Excel file
+        pivot_table.to_excel(writer, sheet_name='Все звонки')
+
+        # Access the xlsxwriter workbook and worksheet objects
+        workbook = writer.book
+        worksheet = writer.sheets['Все звонки']
+        # Define a white fill format
+        white_fill_format = workbook.add_format({'text_wrap': True, 'bg_color': '#FFFFFF', 'border': 0})
+        # Apply the white background to the entire worksheet
+        worksheet.set_column(0, 0, 25, white_fill_format)
+        worksheet.set_column(1, 1, 30, white_fill_format)
+        worksheet.set_column(2, 100, 9, white_fill_format)
+
+        percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF', 'border': 0})
+
+        for i, j in enumerate(pivot_table.head()):
+            if j[1] == 'Ошб.%':
+                worksheet.set_column(i+2, i+2, None, percentage_format)
+                worksheet.conditional_format(0, i+2, 999, i+2, color_scale_rule_errors)
+
+        # Save the Excel file
+        writer.save()
+        print(f'file: {name} -- Transformed 0')
+
+    '''Run Script'''
+    df = prep_data(csv_list=csv_list)
+    df, errors = create_pivot(df, rpc=False)
+    format_xlsx(df,
+                name=output_report_path,
+                errors=errors)
+    logger.info(f'%s {NAME}: exit code 0 (Success)', datetime.datetime.now())
+    print('Exit Code 0')
+    return 0
+    
 if __name__ == '__main__':
     try:
-        logger.info('Script started at %s', datetime.datetime.now())
-        # Capture the original stderr
-        original_stderr = sys.stderr
-        # Redirect stderr to the custom stream
-        #sys.stderr = stderr_logger = StdErrLogger()
-        # Create a parser to handle command-line arguments
+        logger.info(f'%s {NAME}: script started', datetime.datetime.now())
         parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
         # Add arguments for CSV list and output report path
-        parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=True)
-        parser.add_argument('--output_report_path', help='Path for the output Excel report', required=True)
+        parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=False)
+        parser.add_argument('--output_report_path', help='Path for the output Excel report', required=False)
         # Parse the command-line arguments
         args = parser.parse_args()
-        # Check if required arguments are missing
+        # Check Input
         if not args.csv_list or not args.output_report_path:
-            raise ValueError('One or both required arguments are missing')
-        # If required arguments are present, proceed with transformation
+            raise ValueError(f'One or both required arguments are missing')
         transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
     except Exception as ee:
-        logger.exception(f'\n{datetime.datetime.now()}\nExit Code 4 (Script Error): %s', ee)
-    finally:
-        # Restore the original stderr
-        sys.stderr = original_stderr
-
+        logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 1: (Script Error)\n%s', ee)

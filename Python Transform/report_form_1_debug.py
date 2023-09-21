@@ -31,6 +31,7 @@ def transform(csv_list: list, output_report_path):
         df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
         df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
         df = df.reset_index(drop=True)
+        logger.info(f'%s DEBUG: !!!\n {df.iloc[0:1]}', datetime.datetime.now())
         return df
 
     '''Pandas Code'''
@@ -81,6 +82,7 @@ def transform(csv_list: list, output_report_path):
         max_errors = errors_rows.apply(pd.to_numeric, errors='coerce').max().max()
         min_errors = errors_rows.apply(pd.to_numeric, errors='coerce').min().min()
         # Returns thr pivot + kwargs
+        logger.info(f'%s DEBUG: !!!\n {pivot_table.iloc[0:1]}', datetime.datetime.now())
         return pivot_table, [max_percent, min_percent], [max_errors, min_errors]
 
     '''Excel Code'''
