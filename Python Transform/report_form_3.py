@@ -6,11 +6,11 @@ import datetime
 # Add Logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('transform_logs.log')
+fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
-NAME = ''
+NAME = 'report_form_3.py'
 
 def transform(csv_list: list, output_report_path):
     '''Preprocess'''
@@ -47,7 +47,8 @@ def transform(csv_list: list, output_report_path):
                 'Дата',
                 'Поисковый запрос: Все звонки, балл',
                 'Контактное лицо',
-                'Длительность звонка'
+                'Длительность звонка',
+                'Тип договора'
             ]
             # Remove the specified columns
             queries_list = [col for col in queries_list if col not in columns_to_remove]
@@ -89,8 +90,13 @@ def transform(csv_list: list, output_report_path):
     '''Excel Code'''
     def format_xlsx(pivot_all: pd.DataFrame,
                     pivot_rpc: pd.DataFrame,
-                    name: str = "pivot_table_2_call_lists.xlsx", **kwargs):
+                    name: str = "pivot_table_2_call_lists.xlsx",
+                    enable_filtering=True,
+                    **kwargs):
         # Settings
+        if enable_filtering:
+            pivot_all = pivot_all.reset_index()
+            pivot_rpc = pivot_rpc.reset_index()
         excel_file_path = name
         with pd.ExcelWriter(excel_file_path, engine='xlsxwriter') as writer:
             '''Function Start'''
@@ -105,9 +111,10 @@ def transform(csv_list: list, output_report_path):
                 # Define a white fill format
                 white_fill_format = workbook.add_format({'text_wrap': True, 'bg_color': '#FFFFFF', 'border': 0})
                 # Apply the white background to the entire worksheet
-                worksheet.set_column(0, 0, 40, white_fill_format)
-                worksheet.set_column(1, 1, 80, white_fill_format)
-                worksheet.set_column(0, 100, 20, white_fill_format)
+                worksheet.set_column(0, 0, 5, white_fill_format)
+                worksheet.set_column(1, 1, 20, white_fill_format)
+                worksheet.set_column(2, 2, 40, white_fill_format)
+                worksheet.set_column(3, 100, 10, white_fill_format)
             # Create Sheets
             create_sheet(pivot_all, 'Все звонки')
             create_sheet(pivot_rpc, 'RPC')

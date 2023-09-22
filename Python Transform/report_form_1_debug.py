@@ -6,12 +6,11 @@ import datetime
 # Add Logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('transform_logs.log')
+fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
 NAME = 'report_form_1.py'
-
 def transform(csv_list: list, output_report_path):
     '''Preprocess'''
     def prep_data(csv_list=csv_list):
@@ -21,6 +20,7 @@ def transform(csv_list: list, output_report_path):
             df_add = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
             df = pd.concat([df, df_add], ignore_index=True)
         # Fix мультидоговоры for RSB
+        logger.info(f'%s DEBUG 1: !!!\n {df.iloc[0:1]}', datetime.datetime.now())
         mask = df['№ п/п'].isna()
         df = df[~mask]
         # Convert the 'Длительность звонка' column to Timedelta
@@ -28,65 +28,78 @@ def transform(csv_list: list, output_report_path):
         df['Ошибки'] = df['Результат автооценки'] != 100
         #df['Дата'] = df['Дата звонка'].str.split(' ').str[0]
         # Try this
+        logger.info(f'%s DEBUG 3: !!!\n {df.iloc[0:1]}', datetime.datetime.now())
         df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
         df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
+        logger.info(f'%s DEBUG 4: !!!\n {df.iloc[0:1]}', datetime.datetime.now())
         df = df.reset_index(drop=True)
-        logger.info(f'%s DEBUG: !!!\n {df.iloc[0:1]}', datetime.datetime.now())
         return df
 
     '''Pandas Code'''
-    def create_pivot(df, rpc=False):
-        # Add numbers to index
+    def create_pivot(df):
         def update_index(dataframe):
             new_index = [f'{i if len(str(i)) > 1 else f"0{i}"} {row}' for i, row in enumerate(dataframe.index)]
             dataframe.index = new_index
             return dataframe
-        
-        # Create dynamic Mistakes count (1)
-        pivot_df_mistakes = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Ошибки', aggfunc='sum')
-        pivot_df_mistakes = pivot_df_mistakes.fillna(0)
-        pivot_df_mistakes = pivot_df_mistakes.replace(0.00, '')
-        pivot_df_mistakes.columns = pd.to_datetime(pivot_df_mistakes.columns, format='%d.%m.%Y')  # Fix date Time
-        pivot_df_mistakes = pivot_df_mistakes.sort_index(axis=1)  # Fix date Time
-        tmp_pivot_df_mistakes = pivot_df_mistakes.copy()  # Fix %%
-        pivot_df_mistakes.index = pivot_df_mistakes.index + ' (ошибки шт.)'
-        pivot_df_mistakes = update_index(pivot_df_mistakes)
-        # Create dynamic Calls count (2)
-        pivot_df_calls = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Результат автооценки', aggfunc='count', fill_value=0)
-        pivot_df_calls.columns = pd.to_datetime(pivot_df_calls.columns, format='%d.%m.%Y')  # Fix date Time
-        pivot_df_calls = pivot_df_calls.sort_index(axis=1)  # Fix date Time
-        tmp_pivot_df_calls = pivot_df_calls.copy()  # Fix %%
-        pivot_df_calls.index = pivot_df_calls.index + ' (всего шт.)'
-        pivot_df_calls = update_index(pivot_df_calls)
-        # Create dynamic Mean Autoscore (3)
-        pivot_df_mean = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Результат автооценки', aggfunc='mean', fill_value='')
-        pivot_df_mean.columns = pd.to_datetime(pivot_df_mean.columns, format='%d.%m.%Y')  # Fix date Time
-        pivot_df_mean = pivot_df_mean.sort_index(axis=1)  # Fix date Time
-        pivot_df_mean.index = pivot_df_mean.index + ' (средняя АО)'
-        pivot_df_mean = update_index(pivot_df_mean)
-        # Create dynamic Error Percentage (4)
-        pivot_df_mistakes_filled = tmp_pivot_df_mistakes.replace('', 0)
-        pivot_df_error_rate = (pivot_df_mistakes_filled / tmp_pivot_df_calls).applymap(lambda x: x if not pd.isna(x) else '')
-        pivot_df_error_rate.index = pivot_df_error_rate.index + ' (доля ошибок %)'
-        pivot_df_error_rate = update_index(pivot_df_error_rate)
-        # Create Mega-Pivot
-        # Concatenate the pivot tables vertically along rows (axis=0)
-        pivot_table = pd.concat([pivot_df_mistakes, pivot_df_calls, pivot_df_mean, pivot_df_error_rate], axis=0)
-        pivot_table = pivot_table.sort_index()
-        error_rate_rows = pivot_table[pivot_table.index.str.contains("(доля ошибок %)")]
-        errors_rows = pivot_table[pivot_table.index.str.contains("(ошибки шт.)")]
-        # Find min/max percent
-        max_percent = error_rate_rows.apply(pd.to_numeric, errors='coerce').max().max()
-        min_percent = error_rate_rows.apply(pd.to_numeric, errors='coerce').min().min()
-        # Find min/max mistakes
-        max_errors = errors_rows.apply(pd.to_numeric, errors='coerce').max().max()
-        min_errors = errors_rows.apply(pd.to_numeric, errors='coerce').min().min()
-        # Returns thr pivot + kwargs
-        logger.info(f'%s DEBUG: !!!\n {pivot_table.iloc[0:1]}', datetime.datetime.now())
-        return pivot_table, [max_percent, min_percent], [max_errors, min_errors]
+        def run(df):
+            # Create dynamic Mistakes count (1)
+            pivot_df_mistakes = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Ошибки', aggfunc='sum')
+            pivot_df_mistakes = pivot_df_mistakes.fillna(0)
+            pivot_df_mistakes = pivot_df_mistakes.replace(0.00, '')
+            logger.info(f'%s DEBUG 5: !!!\n {pivot_df_mistakes.iloc[0:1]}', datetime.datetime.now())
+            pivot_df_mistakes.columns = pd.to_datetime(pivot_df_mistakes.columns, format='%d.%m.%Y')  # Fix date Time
+            pivot_df_mistakes = pivot_df_mistakes.sort_index(axis=1)  # Fix date Time
+            tmp_pivot_df_mistakes = pivot_df_mistakes.copy()  # Fix %%
+            pivot_df_mistakes.index = pivot_df_mistakes.index + ' (ошибки шт.)'
+            pivot_df_mistakes = update_index(pivot_df_mistakes)
+            logger.info(f'%s DEBUG 6: !!!\n {pivot_df_mistakes.iloc[0:1]}', datetime.datetime.now())
+            # Create dynamic Calls count (2)
+            pivot_df_calls = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Результат автооценки', aggfunc='count', fill_value=0)
+            pivot_df_calls.columns = pd.to_datetime(pivot_df_calls.columns, format='%d.%m.%Y')  # Fix date Time
+            pivot_df_calls = pivot_df_calls.sort_index(axis=1)  # Fix date Time
+            tmp_pivot_df_calls = pivot_df_calls.copy()  # Fix %%
+            pivot_df_calls.index = pivot_df_calls.index + ' (всего шт.)'
+            pivot_df_calls = update_index(pivot_df_calls)
+            # Create dynamic Mean Autoscore (3)
+            pivot_df_mean = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Результат автооценки', aggfunc='mean', fill_value='')
+            pivot_df_mean.columns = pd.to_datetime(pivot_df_mean.columns, format='%d.%m.%Y')  # Fix date Time
+            pivot_df_mean = pivot_df_mean.sort_index(axis=1)  # Fix date Time
+            pivot_df_mean.index = pivot_df_mean.index + ' (средняя АО)'
+            pivot_df_mean = update_index(pivot_df_mean)
+            # Create dynamic Error Percentage (4)
+            logger.info(f'%s DEBUG 7: !!!\n {pivot_df_mean.iloc[0:1]}', datetime.datetime.now())
+            pivot_df_mistakes_filled = tmp_pivot_df_mistakes.replace('', 0)
+            pivot_df_error_rate = (pivot_df_mistakes_filled / tmp_pivot_df_calls).applymap(lambda x: x if not pd.isna(x) else '')
+            pivot_df_error_rate.index = pivot_df_error_rate.index + ' (доля ошибок %)'
+            logger.info(f'%s DEBUG 8: !!!\n {pivot_df_error_rate.iloc[0:1]}', datetime.datetime.now())
+            pivot_df_error_rate = update_index(pivot_df_error_rate)
+            # Create Mega-Pivot
+            # Concatenate the pivot tables vertically along rows (axis=0)
+            pivot_table = pd.concat([pivot_df_mistakes, pivot_df_calls, pivot_df_mean, pivot_df_error_rate], axis=0)
+            pivot_table = pivot_table.sort_index()
+            error_rate_rows = pivot_table[pivot_table.index.str.contains("(доля ошибок %)")]
+            errors_rows = pivot_table[pivot_table.index.str.contains("(ошибки шт.)")]
+            # Create a summary DataFrame with the desired column names
+            # Find min/max percent
+            max_percent = error_rate_rows.apply(pd.to_numeric, errors='coerce').max().max()
+            min_percent = error_rate_rows.apply(pd.to_numeric, errors='coerce').min().min()
+            # Find min/max mistakes
+            max_errors = errors_rows.apply(pd.to_numeric, errors='coerce').max().max()
+            min_errors = errors_rows.apply(pd.to_numeric, errors='coerce').min().min()
+            # Returns thr pivot + kwargs
+            logger.info(f'%s DEBUG 9: !!!\n {pivot_table.iloc[0:1]}', datetime.datetime.now())
+            return pivot_table, [max_percent, min_percent], [max_errors, min_errors]
+        # Create RPC-only frame
+        rpc_df = df[df['Контактное лицо'] == 'Должник']
+        pivot_all, percent, errors = run(df)
+        #del df
+        pivot_rpc, _, _ = run(rpc_df)
+        #del rpc_df
+        return pivot_all, pivot_rpc, percent, errors
 
     '''Excel Code'''
-    def format_xlsx(pivot_table: pd.DataFrame,
+    def format_xlsx(pivot_all: pd.DataFrame,
+                    pivot_rpc: pd.DataFrame,
                     name: str = "pivot_table_2_call_lists.xlsx", **kwargs):
         # Specify the Excel file path
         excel_file_path = name
@@ -124,49 +137,75 @@ def transform(csv_list: list, output_report_path):
 
         # Create a Pandas Excel writer using xlsxwriter as the engine
         with pd.ExcelWriter(excel_file_path, engine='xlsxwriter') as writer:
+            logger.info(f'%s DEBUG 10: !!!\n EXCEL STARTING', datetime.datetime.now())
             '''Function Start'''
-            # Write the DataFrame to the Excel file
-            pivot_table.to_excel(writer, sheet_name='Все звонки')
+            def create_summary_pivot(pivot_all, pivot_rpc):
+                def create_col(pivot, title, main_index):
+                    calls = pivot[pivot.index.str.contains('(всего шт.)')].apply(pd.to_numeric, errors='coerce')
+                    calls = calls.sum(axis=1)
+                    error_rate = pivot[pivot.index.str.contains('(доля ошибок %)')].apply(pd.to_numeric, errors='coerce')
+                    error_rate = error_rate.mean(axis=1,skipna=True,numeric_only=True)
+                    errors = pivot[pivot.index.str.contains('(ошибки шт.)')].apply(pd.to_numeric, errors='coerce')
+                    errors = errors.sum(axis=1)
+                    score = pivot[pivot.index.str.contains('(средняя АО)')].apply(pd.to_numeric, errors='coerce')
+                    score = score.mean(axis=1,skipna=True, numeric_only=True)
+                    summary = pd.DataFrame(index=main_index.index)
+                    summary[f'Свод: {title}'] = pd.concat([calls, error_rate, errors, score], axis=0)
+                    summary = summary.sort_index()
+                    return summary
+                full_summary = pd.DataFrame()
+                full_summary = pd.concat([create_col(pivot_all, 'все звонки', main_index=pivot_all),
+                                        create_col(pivot_rpc, 'RPC', main_index=pivot_all) ], axis=1)
+                return full_summary
+            def create_sheet(pivot_table, sheet_name):
+                # Write the DataFrame to the Excel file
+                pivot_table.to_excel(writer, sheet_name=sheet_name)
 
-            # Access the xlsxwriter workbook and worksheet objects
-            workbook = writer.book
-            worksheet = writer.sheets['Все звонки']
+                # Access the xlsxwriter workbook and worksheet objects
+                workbook = writer.book
+                worksheet = writer.sheets[sheet_name]
 
-            for row_num, row in enumerate(pivot_table.index):
-                if "(доля ошибок %)" in row:
-                    format_range = 'B' + str(row_num + 2) + ':AZ' + str(row_num + 2)  # Adjust column range as needed
-                    worksheet.conditional_format(format_range, color_scale_rule_percent)
-            # Define a percentage format
-            percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF'})
+                for row_num, row in enumerate(pivot_table.index):
+                    if "(доля ошибок %)" in row:
+                        format_range = 'B' + str(row_num + 2) + ':AZ' + str(row_num + 2)  # Adjust column range as needed
+                        worksheet.conditional_format(format_range, color_scale_rule_percent)
+                # Define a percentage format
+                percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF'})
 
-            for row_num, row in enumerate(pivot_table.index):
-                if "(доля ошибок %)" in row:
-                    worksheet.set_row(row_num+1, None, percentage_format)
+                for row_num, row in enumerate(pivot_table.index):
+                    if "(доля ошибок %)" in row:
+                        worksheet.set_row(row_num+1, None, percentage_format)
 
-            for row_num, row in enumerate(pivot_table.index):
-                if "(ошибки шт.)" in row:
-                    format_range = 'B' + str(row_num + 2) + ':AZ' + str(row_num + 2)  # Adjust column range as needed
-                    worksheet.conditional_format(format_range, color_scale_rule_errors)
+                for row_num, row in enumerate(pivot_table.index):
+                    if "(ошибки шт.)" in row:
+                        format_range = 'B' + str(row_num + 2) + ':AZ' + str(row_num + 2)  # Adjust column range as needed
+                        worksheet.conditional_format(format_range, color_scale_rule_errors)
 
-            # Custom index format
-            index_format = workbook.add_format(
-                {'bold': True, 'border': 1, 'bg_color': '#FFFFFF', 'align': 'left'})
-            for row_num, row in enumerate(pivot_table.index):
-                worksheet.write(f'A{row_num+2}', row, index_format)
+                # Custom index format
+                index_format = workbook.add_format(
+                    {'bold': True, 'border': 1, 'bg_color': '#FFFFFF', 'align': 'left'})
+                for row_num, row in enumerate(pivot_table.index):
+                    worksheet.write(f'A{row_num+2}', row, index_format)
 
-            # Define a white fill format
-            white_fill_format = workbook.add_format({'bg_color': '#FFFFFF', 'border': 0})
+                # Define a white fill format
+                white_fill_format = workbook.add_format({'bg_color': '#FFFFFF', 'border': 0})
 
-            # Apply the white background to the entire worksheet
-            worksheet.set_column(0, 0, 60, white_fill_format)
-            worksheet.set_column(1, 100, 18, white_fill_format)
-            # With = Save
+                # Apply the white background to the entire worksheet
+                worksheet.set_column(0, 0, 60, white_fill_format)
+                worksheet.set_column(1, 100, 18, white_fill_format)
+                logger.info(f'%s DEBUG 11: !!!\n EXCEL FINISHED', datetime.datetime.now())
+            # Create 2 sheets
+            create_sheet(pivot_all, 'Все звонки')
+            create_sheet(pivot_rpc, 'RPC')
+            create_sheet(create_summary_pivot(pivot_all, pivot_rpc), 'Общий срез')
+            '''ADD SUMMARY'''
+            logger.info(f'%s DEBUG 12: !!!\n EXCEL TABS CREATED', datetime.datetime.now())
         print(f'file: {name} -- Transformed 0')
 
     '''Run Script'''
     df = prep_data(csv_list=csv_list)
-    df, percent, errors = create_pivot(df, rpc=False)
-    format_xlsx(df,
+    df, df_rpc, percent, errors = create_pivot(df)
+    format_xlsx(df, df_rpc,
                 name=output_report_path,
                 percent=percent,
                 errors=errors)

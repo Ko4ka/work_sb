@@ -6,11 +6,11 @@ import datetime
 # Add Logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('transform_logs.log')
+fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
-NAME = ''
+NAME = 'report_form_2.py'
 
 def transform(csv_list: list, output_report_path):
     '''Preprocess'''
@@ -33,6 +33,43 @@ def transform(csv_list: list, output_report_path):
 
     '''Pandas Code'''
     def create_pivot(df):
+        def create_summary_pivot(df):
+            def create_col(df, title, main_index=None):
+                '''
+                df: df main
+                title: RPC?
+                main_index: None id it's the main df, any pivot from the main df if it is RPC
+                '''
+                header_label = title
+                pivot_df_calls = df.pivot_table(index=['Имя колл-листа', 'Результат робота'], values='Результат автооценки', aggfunc='count', fill_value='')
+                # Calculate number of errors
+                pivot_df_errors = df.pivot_table(index=['Имя колл-листа', 'Результат робота'], values='Ошибки', aggfunc='sum', fill_value='')
+                # Calculate mean autoscore
+                pivot_df_mean = df.pivot_table(index=['Имя колл-листа', 'Результат робота'], values='Результат автооценки', aggfunc='mean', fill_value='')
+                # Calculate error rate
+                # Calculate error rate
+                pivot_df_error_rate = pd.DataFrame(pivot_df_errors['Ошибки'] / pivot_df_calls['Результат автооценки'])
+                pivot_df_error_rate = pivot_df_error_rate.where(pivot_df_errors['Ошибки'] != 0, other='')
+                # Create a DataFrame with 'Общий' as the main header
+                header = pd.MultiIndex.from_tuples([(f'Срез: {header_label}', 'Ошб.%'), (f'Срез: {header_label}', 'Ошб.(шт.)'), (f'Срез: {header_label}', 'Зв.(шт.)'), (f'Срез: {header_label}', 'Ср.АО')])
+                # Handle RPC Case
+                if main_index is pd.DataFrame:
+                    summary = pd.DataFrame(columns=header, index=main_index.index)
+                else:
+                    summary = pd.DataFrame(columns=header, index=pivot_df_error_rate.index)
+                # Assign your Series to the corresponding columns
+                summary[(f'Срез: {header_label}', 'Ошб.%')] = pivot_df_error_rate
+                summary[(f'Срез: {header_label}', 'Ошб.(шт.)')] = pivot_df_errors
+                summary[(f'Срез: {header_label}', 'Зв.(шт.)')] = pivot_df_calls
+                summary[(f'Срез: {header_label}', 'Ср.АО')] = pivot_df_mean
+                return summary, pivot_df_error_rate
+            # Create full summary
+            final_summary = pd.DataFrame()
+            full_summary, ref_index = create_col(df, 'все звонки', main_index=None)
+            rpc_df = df[df['Контактное лицо'] == 'Должник']
+            rpc_summary, _ = create_col(rpc_df, 'RPC', main_index=ref_index)
+            final_summary = pd.concat([full_summary, rpc_summary], axis=1)
+            return final_summary
         def create_multiindex(dataframe, sub_index:str):
             # Create MultiIndex
             multiindex = []
@@ -85,16 +122,25 @@ def transform(csv_list: list, output_report_path):
             return merged_df, [max_error_rate, min_error_rate]
         # Create RPC-only frame
         rpc_df = df[df['Контактное лицо'] == 'Должник']
+        summary = create_summary_pivot(df)
         pivot_all, errors = run(df)
         del df
         pivot_rpc, _= run(rpc_df)
         del rpc_df
-        return pivot_all, pivot_rpc, errors
+        return pivot_all, pivot_rpc, summary, errors
 
     '''Excel Code'''
     def format_xlsx(pivot_all: pd.DataFrame,
                     pivot_rpc: pd.DataFrame,
-                    name: str = "pivot_table_2_call_lists.xlsx", **kwargs):
+                    summary: pd.DataFrame,
+                    name: str = "pivot_table_2_call_lists.xlsx",
+                    enable_filtering=True,
+                    **kwargs):
+        # Reset index to enable filters
+        if enable_filtering:
+            pivot_all = pivot_all.reset_index()
+            pivot_rpc = pivot_rpc.reset_index()
+            summary = summary.reset_index()
         # Settings
         excel_file_path = name
         min_errors = kwargs['errors'][1]
@@ -122,31 +168,40 @@ def transform(csv_list: list, output_report_path):
                 workbook = writer.book
                 worksheet = writer.sheets[sheet_name]
                 # Define a white fill format
-                white_fill_format = workbook.add_format({'text_wrap': True, 'bg_color': '#FFFFFF', 'border': 0})
+                white_fill_format = workbook.add_format({'text_wrap': False,
+                                                         'bg_color': '#FFFFFF',
+                                                         'border': 0})
+                white_index_format = workbook.add_format({'text_wrap': True,
+                                                        'bg_color': '#FFFFFF',
+                                                        'border': 0,
+                                                        'bold': True
+                                                        })
                 # Apply the white background to the entire worksheet
-                worksheet.set_column(0, 0, 25, white_fill_format)
-                worksheet.set_column(1, 1, 35, white_fill_format)
-                worksheet.set_column(2, 100, 10, white_fill_format)
+                worksheet.set_column(0, 0, 5, white_fill_format)
+                worksheet.set_column(1, 1, 25, white_index_format)
+                worksheet.set_column(2, 2, 30, white_index_format)
+                worksheet.set_column(3, 100, 13, white_fill_format)
+
                 percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF', 'border': 0})
 
                 for i, j in enumerate(pivot_table.head()):
-                    worksheet.set_column(i+2, i+2, 10, white_fill_format)
+                    if i>2:
+                        worksheet.set_column(i+1, i+1, 10, white_fill_format)
                     if j[1] == 'Ошб.%':
-                        worksheet.conditional_format(2, i+2, 999, i+2, color_scale_rule_errors)
-                        worksheet.set_column(i+2, i+2, None, percentage_format)
-
-                      
-
+                        worksheet.set_column(i+1, i+1, None, percentage_format)
+                        worksheet.conditional_format(2, i+1, 999, i+1, color_scale_rule_errors)
+                # Autosave
             # Create Sheets
             create_sheet(pivot_all, 'Все звонки')
             create_sheet(pivot_rpc, 'RPC')
+            create_sheet(summary, 'Общий срез')
             # Create Summary Sheet
         print(f'file: {name} -- Transformed 0')
 
     '''Run Script'''
     df = prep_data(csv_list=csv_list)
-    df, rpc_df, errors = create_pivot(df)
-    format_xlsx(df, rpc_df,
+    df, rpc_df, summary, errors = create_pivot(df)
+    format_xlsx(df, rpc_df, summary,
                 name=output_report_path,
                 errors=errors)
     logger.info(f'%s {NAME}: exit code 0 (Success)', datetime.datetime.now())

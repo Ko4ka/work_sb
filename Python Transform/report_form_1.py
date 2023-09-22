@@ -6,7 +6,7 @@ import datetime
 # Add Logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('transform_logs.log')
+fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
