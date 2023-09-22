@@ -11,6 +11,7 @@ fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
 NAME = 'report_form_1.py'
+
 def transform(csv_list: list, output_report_path):
     '''Preprocess'''
     def prep_data(csv_list=csv_list):
@@ -20,7 +21,6 @@ def transform(csv_list: list, output_report_path):
             df_add = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
             df = pd.concat([df, df_add], ignore_index=True)
         # Fix мультидоговоры for RSB
-        logger.info(f'%s DEBUG 1: !!!\n {str(df.iloc[0:1])}', datetime.datetime.now())
         mask = df['№ п/п'].isna()
         df = df[~mask]
         # Convert the 'Длительность звонка' column to Timedelta
@@ -28,50 +28,58 @@ def transform(csv_list: list, output_report_path):
         df['Ошибки'] = df['Результат автооценки'] != 100
         #df['Дата'] = df['Дата звонка'].str.split(' ').str[0]
         # Try this
-        logger.info(f'%s DEBUG 3: !!!\n {df.iloc[0:1]}', datetime.datetime.now())
         df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
         df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
-        logger.info(f'%s DEBUG 4: !!!\n {str(df.iloc[0:1])}', datetime.datetime.now())
         df = df.reset_index(drop=True)
         return df
 
     '''Pandas Code'''
     def create_pivot(df):
+        def update_rpc_index(pivot_rpc, pivot_all):
+            # Create an empty dictionary to store index mapping
+            index_mapping = {}
+            # Iterate through the index of pivot_rpc
+            for i in pivot_rpc.index:
+                # Iterate through the index of pivot_all
+                for j in pivot_all.index:
+                    # Check if the condition is met (i[3:] == j[3:])
+                    if i[3:] == j[3:]:
+                        # Update the index mapping
+                        index_mapping[i] = j
+            # Use the rename method to update the index based on the mapping
+            pivot_rpc = pivot_rpc.rename(index=index_mapping)
+            return pivot_rpc
         def update_index(dataframe):
             new_index = [f'{i if len(str(i)) > 1 else f"0{i}"} {row}' for i, row in enumerate(dataframe.index)]
             dataframe.index = new_index
             return dataframe
         def run(df):
             # Create dynamic Mistakes count (1)
-            pivot_df_mistakes = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Ошибки', aggfunc='sum')
+            pivot_df_mistakes = df.pivot_table(index='Тип договора', columns='Дата', values='Ошибки', aggfunc='sum')
             pivot_df_mistakes = pivot_df_mistakes.fillna(0)
             pivot_df_mistakes = pivot_df_mistakes.replace(0.00, '')
-            logger.info(f'%s DEBUG 5: !!!\n {pivot_df_mistakes.iloc[0:1]}', datetime.datetime.now())
             pivot_df_mistakes.columns = pd.to_datetime(pivot_df_mistakes.columns, format='%d.%m.%Y')  # Fix date Time
             pivot_df_mistakes = pivot_df_mistakes.sort_index(axis=1)  # Fix date Time
             tmp_pivot_df_mistakes = pivot_df_mistakes.copy()  # Fix %%
             pivot_df_mistakes.index = pivot_df_mistakes.index + ' (ошибки шт.)'
             pivot_df_mistakes = update_index(pivot_df_mistakes)
-            logger.info(f'%s DEBUG 6: !!!\n {pivot_df_mistakes.iloc[0:1]}', datetime.datetime.now())
             # Create dynamic Calls count (2)
-            pivot_df_calls = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Результат автооценки', aggfunc='count', fill_value=0)
+            pivot_df_calls = df.pivot_table(index='Тип договора', columns='Дата', values='Результат автооценки', aggfunc='count', fill_value=0)
             pivot_df_calls.columns = pd.to_datetime(pivot_df_calls.columns, format='%d.%m.%Y')  # Fix date Time
             pivot_df_calls = pivot_df_calls.sort_index(axis=1)  # Fix date Time
             tmp_pivot_df_calls = pivot_df_calls.copy()  # Fix %%
             pivot_df_calls.index = pivot_df_calls.index + ' (всего шт.)'
             pivot_df_calls = update_index(pivot_df_calls)
             # Create dynamic Mean Autoscore (3)
-            pivot_df_mean = df.pivot_table(index='Имя колл-листа', columns='Дата', values='Результат автооценки', aggfunc='mean', fill_value='')
+            pivot_df_mean = df.pivot_table(index='Тип договора', columns='Дата', values='Результат автооценки', aggfunc='mean', fill_value='')
             pivot_df_mean.columns = pd.to_datetime(pivot_df_mean.columns, format='%d.%m.%Y')  # Fix date Time
             pivot_df_mean = pivot_df_mean.sort_index(axis=1)  # Fix date Time
             pivot_df_mean.index = pivot_df_mean.index + ' (средняя АО)'
             pivot_df_mean = update_index(pivot_df_mean)
             # Create dynamic Error Percentage (4)
-            logger.info(f'%s DEBUG 7: !!!\n {pivot_df_mean.iloc[0:1]}', datetime.datetime.now())
             pivot_df_mistakes_filled = tmp_pivot_df_mistakes.replace('', 0)
             pivot_df_error_rate = (pivot_df_mistakes_filled / tmp_pivot_df_calls).applymap(lambda x: x if not pd.isna(x) else '')
             pivot_df_error_rate.index = pivot_df_error_rate.index + ' (доля ошибок %)'
-            logger.info(f'%s DEBUG 8: !!!\n CHECK', datetime.datetime.now())
             pivot_df_error_rate = update_index(pivot_df_error_rate)
             # Create Mega-Pivot
             # Concatenate the pivot tables vertically along rows (axis=0)
@@ -87,13 +95,13 @@ def transform(csv_list: list, output_report_path):
             max_errors = errors_rows.apply(pd.to_numeric, errors='coerce').max().max()
             min_errors = errors_rows.apply(pd.to_numeric, errors='coerce').min().min()
             # Returns thr pivot + kwargs
-            logger.info(f'%s DEBUG 9: !!!\n {str(pivot_table.iloc[0:1])}', datetime.datetime.now())
             return pivot_table, [max_percent, min_percent], [max_errors, min_errors]
         # Create RPC-only frame
         rpc_df = df[df['Контактное лицо'] == 'Должник']
         pivot_all, percent, errors = run(df)
         #del df
         pivot_rpc, _, _ = run(rpc_df)
+        pivot_rpc = update_rpc_index(pivot_rpc, pivot_all)
         #del rpc_df
         return pivot_all, pivot_rpc, percent, errors
 
@@ -137,7 +145,6 @@ def transform(csv_list: list, output_report_path):
 
         # Create a Pandas Excel writer using xlsxwriter as the engine
         with pd.ExcelWriter(excel_file_path, engine='xlsxwriter') as writer:
-            logger.info(f'%s DEBUG 10: !!!\n EXCEL STARTING', datetime.datetime.now())
             '''Function Start'''
             def create_summary_pivot(pivot_all, pivot_rpc):
                 def create_col(pivot, title, main_index):
@@ -193,13 +200,12 @@ def transform(csv_list: list, output_report_path):
                 # Apply the white background to the entire worksheet
                 worksheet.set_column(0, 0, 60, white_fill_format)
                 worksheet.set_column(1, 100, 18, white_fill_format)
-                logger.info(f'%s DEBUG 11: !!!\n EXCEL FINISHED', datetime.datetime.now())
             # Create 2 sheets
             create_sheet(pivot_all, 'Все звонки')
             create_sheet(pivot_rpc, 'RPC')
             create_sheet(create_summary_pivot(pivot_all, pivot_rpc), 'Общий срез')
             '''ADD SUMMARY'''
-            logger.info(f'%s DEBUG 12: !!!\n EXCEL TABS CREATED', datetime.datetime.now())
+            # With = Save
         print(f'file: {name} -- Transformed 0')
 
     '''Run Script'''

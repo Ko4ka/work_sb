@@ -35,6 +35,20 @@ def transform(csv_list: list, output_report_path):
 
     '''Pandas Code'''
     def create_pivot(df):
+        def update_rpc_index(pivot_rpc, pivot_all):
+            # Create an empty dictionary to store index mapping
+            index_mapping = {}
+            # Iterate through the index of pivot_rpc
+            for i in pivot_rpc.index:
+                # Iterate through the index of pivot_all
+                for j in pivot_all.index:
+                    # Check if the condition is met (i[3:] == j[3:])
+                    if i[3:] == j[3:]:
+                        # Update the index mapping
+                        index_mapping[i] = j
+            # Use the rename method to update the index based on the mapping
+            pivot_rpc = pivot_rpc.rename(index=index_mapping)
+            return pivot_rpc
         def update_index(dataframe):
             new_index = [f'{i if len(str(i)) > 1 else f"0{i}"} {row}' for i, row in enumerate(dataframe.index)]
             dataframe.index = new_index
@@ -87,6 +101,7 @@ def transform(csv_list: list, output_report_path):
         pivot_all, percent, errors = run(df)
         #del df
         pivot_rpc, _, _ = run(rpc_df)
+        pivot_rpc = update_rpc_index(pivot_rpc, pivot_all)
         #del rpc_df
         return pivot_all, pivot_rpc, percent, errors
 
