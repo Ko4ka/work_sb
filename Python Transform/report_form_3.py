@@ -19,6 +19,11 @@ def transform(csv_list: list, output_report_path):
         df = pd.DataFrame()
         for i in csv_list:
             df_add = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
+            # Memory optimization float32 -> int8
+            mask = df_add['№ п/п'].isna()
+            df_add = df_add[~mask]
+            numeric_columns = df_add.select_dtypes(include=['number']).columns
+            df_add[numeric_columns] = df_add[numeric_columns].astype('int8')
             df = pd.concat([df, df_add], ignore_index=True)
         # Fix мультидоговоры
         mask = df['№ п/п'].isna()
@@ -142,5 +147,9 @@ if __name__ == '__main__':
         if not args.csv_list or not args.output_report_path:
             raise ValueError(f'One or both required arguments are missing')
         transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
+    except MemoryError as oom:
+        logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 3: (OOM Error)\n%s', oom)
     except Exception as ee:
-        logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 1: (Script Error)\n%s', ee)
+        logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 1: (Python Error)\n%s', ee)
+    finally:
+        logger.info(f'%s {NAME}: script failed (OOM)', datetime.datetime.now())

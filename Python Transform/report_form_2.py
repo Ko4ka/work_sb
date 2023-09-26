@@ -5,9 +5,9 @@ import datetime
 
 # Add Logging
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.NOTSET)
 fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.NOTSET)
 logger.addHandler(fh)
 # Add name
 NAME = 'report_form_2.py'
@@ -55,9 +55,13 @@ def transform(csv_list: list, output_report_path):
                 # Handle RPC Case
                 if main_index is pd.DataFrame:
                     summary = pd.DataFrame(columns=header, index=main_index.index)
+                    logger.debug('Main index')
                 else:
                     summary = pd.DataFrame(columns=header, index=pivot_df_error_rate.index)
+                    logger.debug('Error index')
                 # Assign your Series to the corresponding columns
+                logger.debug('Summary %s', summary)
+                logger.debug('Error Rate %s',pivot_df_error_rate)
                 summary[(f'Срез: {header_label}', 'Ошб.%')] = pivot_df_error_rate
                 summary[(f'Срез: {header_label}', 'Ошб.(шт.)')] = pivot_df_errors
                 summary[(f'Срез: {header_label}', 'Зв.(шт.)')] = pivot_df_calls

@@ -6,5 +6,13 @@ py -3.7 -m report_2_call --csv_list "C:\Users\Alex\Work_python\work_sb\Python Tr
 
 py -3.7 -m report_form_2 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\universal_2.csv" --output_report_path "C:\Users\Alex\Work_python\work_sb\Python Transform\all_rpc_1.xlsx"
 
-py -3.7 -m report_form_4 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\universal_3.csv" --output_report_path "C:\Users\Alex\Work_python\work_sb\Python Transform\all_rpc_3.xlsx"
+py -3.7 -m report_form_2 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\1.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\2.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\3.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\4.csv" --output_report_path "oom.xlsx"
 
+docker build -t my_pandas_container .
+
+docker run --memory 8g my_pandas_container /usr/local/bin/python3.7 -m report_form_1_debug --csv_list "Reports/1.csv" "Reports/2.csv" "Reports/3.csv" "Reports/4.csv" --output_report_path "oom.xlsx"
+
+docker run --memory 8g my_pandas_container /usr/local/bin/python3.7 -m report_form_1_debug --csv_list "1.csv" "2.csv" "3.csv" "4.csv" --output_report_path "oom.xlsx"
+
+docker ps -a
+docker stats  16156f3ea879
