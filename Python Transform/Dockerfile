@@ -5,6 +5,7 @@ FROM python:3.8
 WORKDIR /app
 
 # Copy your Python script into the container
+COPY indices.py .
 COPY report_form_1.py .
 COPY report_form_2.py .
 COPY report_form_3.py .
@@ -16,6 +17,7 @@ COPY Reports/1.csv .
 COPY Reports/2.csv .
 COPY Reports/3.csv .
 COPY Reports/4.csv .
+COPY 15GB.csv .
 
 # Install any dependencies your script requires
 # You might need to add specific dependencies if your script uses non-standard libraries
