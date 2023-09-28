@@ -13,32 +13,13 @@ logger.addHandler(fh)
 NAME = 'report_form_3.py'
 
 def transform(csv_list: list, output_report_path):
-    '''Preprocess'''
-    def prep_data(csv_list=csv_list):
-        # Concatenate all csv to a single biiig df
-        df = pd.DataFrame()
-        for i in csv_list:
-            df_add = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
-            # Memory optimization float32 -> int8
-            mask = df_add['№ п/п'].isna()
-            df_add = df_add[~mask]
-            numeric_columns = df_add.select_dtypes(include=['number']).columns
-            df_add[numeric_columns] = df_add[numeric_columns].astype('int8')
-            df = pd.concat([df, df_add], ignore_index=True)
-        # Fix мультидоговоры
-        mask = df['№ п/п'].isna()
-        df = df[~mask]
-        # Step 1: Convert the 'Длительность звонка' column to Timedelta
-        #df['Длительность звонка'] = pd.to_timedelta(df['Длительность звонка'])
-        df['Ошибки'] = df['Результат автооценки'] != 100
-        df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
-        df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
-        df = df.reset_index(drop=True)
-        return df
-
-    '''Pandas Code'''
-    def create_pivot(df):
-        def run(df):
+    def construct_df(csv_list):
+        '''
+        Linear time:
+        ~9 sec for 1 day
+        ~5 min for 1 month
+        '''
+        def create_pivot(df):
             # GET HEADERS AND REMOVE IRRELEVANT ONES
             queries_list = list(df.columns)
             columns_to_remove = [
@@ -57,22 +38,19 @@ def transform(csv_list: list, output_report_path):
             ]
             # Remove the specified columns
             queries_list = [col for col in queries_list if col not in columns_to_remove]
-
-            # Все звонки fix
+            # Все звонки fix: для отображния стрроки 'Все звонки'
             df['Всего звонков по листу'] = df['Поисковый запрос: Все звонки, балл']
             queries_list.append('Всего звонков по листу')
-            #df['Всего звонков по листу'] = df['Всего звонков по листу'] * -1
-
+            # Each column has -25/0, by dividing I get a 1/0 format
             for col in queries_list:
+                df[col] = df[col].astype('Int8')  # Limit RAM usage
                 df[col] = df[col] / df[col]
-
             queries_list.append('Ошибки')
-
+            # INTENSIVE MELTING
             # First, melt the DataFrame to convert 'Запрос_1', 'Запрос_2', 'Запрос_3' into rows
             melted_df = pd.melt(df, id_vars=['Имя колл-листа', 'Дата'], value_vars = queries_list, var_name='Запрос', value_name='Ошибки шт.')
             melted_df.reset_index(drop=True)
-            '''I could insert check here that will assign a block based on Имя кол-лист, but it will decrease the time'''
-            del df
+            #del df
             # Now, create a pivot table to calculate sums
             pivot_table = melted_df.pivot_table(
                 values='Ошибки шт.',
@@ -80,17 +58,45 @@ def transform(csv_list: list, output_report_path):
                 columns='Дата',
                 aggfunc='sum'
             )
-            del melted_df
-            # If you want to reset the index and have a cleaner view
-            pivot_table.reset_index()
+            # del melted_df
             return pivot_table
-       # Create RPC-only frame
-        rpc_df = df[df['Контактное лицо'] == 'Должник']
-        pivot_all = run(df)
-        del df
-        pivot_rpc = run(rpc_df)
-        del rpc_df
-        return pivot_all, pivot_rpc
+        
+        df_main = pd.DataFrame()
+        df_rpc = pd.DataFrame()    
+        for iteration, i in enumerate(csv_list):
+            '''
+            Take report files 1-by-1 and the merge then on external index from indices.py
+            This will cut RAM cost 30 times (and make shit slower)
+            '''
+            # Merge 2 frames
+            df = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
+            # Remove мультидоговоры for RSB
+            mask = df['№ п/п'].isna()
+            df = df[~mask]
+            # Convert the 'Длительность звонка' column to Timedelta
+            df['Длительность звонка'] = pd.to_timedelta(df['Длительность звонка'])
+            df['Ошибки'] = df['Результат автооценки'] != 100
+            # Fix Date
+            df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
+            df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
+            df = df.reset_index(drop=True)
+            # Create RPC
+            rpc_df = df[df['Контактное лицо'] == 'Должник']
+            rpc_df = rpc_df.reset_index(drop=True)
+            # Warn if dates != 1
+            if len(df['Дата'].unique().tolist()) > 1:
+                logger.warning('%s Warning: more than a single date in df...', datetime.datetime.now())
+            # MEMORY MANAGEMENT: CONCAT TO INDEX AND DELETE
+            main_pivot = create_pivot(df)
+            df_main = pd.concat([df_main, main_pivot], axis=1)
+            del main_pivot  # Save 10MB
+            rpc_pivot = create_pivot(rpc_df)
+            df_rpc = pd.concat([df_rpc, rpc_pivot], axis=1)
+            del rpc_pivot  # Save 10MB
+            # Log stage
+            logger.info(f'%s {NAME}: iteration #{iteration} done...', datetime.datetime.now())
+
+        return df_main, df_rpc
 
     '''Excel Code'''
     def format_xlsx(pivot_all: pd.DataFrame,
@@ -103,6 +109,29 @@ def transform(csv_list: list, output_report_path):
             pivot_all = pivot_all.reset_index()
             pivot_rpc = pivot_rpc.reset_index()
         excel_file_path = name
+
+        # Colors
+        # Define a green data bar format
+        green_databar_format = {
+            'type': 'data_bar',
+            'bar_color': '#63C384',  # Hex color code for green
+        }
+
+        # Define a red data bar format
+        red_databar_format = {
+            'type': 'data_bar',
+            'bar_color': '#e85f5f',  # Hex color code for green
+        }
+        color_scale_rule_percent = {
+                        'type': '2_color_scale',
+                        'min_color': '#FFFFFF',  # White
+                        'max_color': '#e85f5f',  # Red
+                        'min_type': 'num',
+                        'min_value': 0,
+                        'max_type': 'percentile',
+                        'max_value': 100
+                        }
+        
         with pd.ExcelWriter(excel_file_path, engine='xlsxwriter') as writer:
             '''Function Start'''
             def create_sheet(pivot_table, sheet_name):
@@ -111,15 +140,28 @@ def transform(csv_list: list, output_report_path):
                 # Access the xlsxwriter workbook and worksheet objects
                 workbook = writer.book
                 worksheet = writer.sheets[sheet_name]
-                # Define a white fill format
-                white_fill_format = workbook.add_format({'text_wrap': True, 'bg_color': '#FFFFFF', 'border': 0})
-                # Define a white fill format
-                white_fill_format = workbook.add_format({'text_wrap': True, 'bg_color': '#FFFFFF', 'border': 0})
-                # Apply the white background to the entire worksheet
+                white_fill_format = workbook.add_format({'text_wrap': False, 'bg_color': '#FFFFFF', 'border': 0})
+                ref_format = workbook.add_format({'text_wrap': False, 'bold': True, 'align':'right', 'bg_color': '#FFFFFF', 'border': 0})
                 worksheet.set_column(0, 0, 5, white_fill_format)
-                worksheet.set_column(1, 1, 20, white_fill_format)
-                worksheet.set_column(2, 2, 40, white_fill_format)
+                worksheet.set_column(1, 1, 25, white_fill_format)
+                worksheet.set_column(2, 2, 100, white_fill_format)
                 worksheet.set_column(3, 100, 10, white_fill_format)
+                format_tmp_start = []
+                format_tmp_stop = []
+                for row_num, row in enumerate(pivot_table['Запрос']):
+                    if "Всего звонков по листу" in row:
+                        worksheet.conditional_format(f'D{row_num+2}:AZ{row_num+2}', green_databar_format)
+                        worksheet.write(f'C{row_num+2}', 'Всего звонков по листу',ref_format)
+                        format_tmp_start.append(row_num+4)
+                        format_tmp_stop.append(row_num+1)  # Hack I append a list of previous querie
+                    elif "Ошибки" in row:
+                        worksheet.conditional_format(f'D{row_num+2}:AZ{row_num+2}', red_databar_format)
+                        worksheet.write(f'C{row_num+2}', 'Ошибки', ref_format)
+                # Prepare ranges for formatting
+                format_tmp_start = format_tmp_start[:-1]
+                format_tmp_stop = format_tmp_stop[1:]
+                for num, i in enumerate(format_tmp_start):
+                    worksheet.conditional_format(f'D{i}:AZ{format_tmp_stop[num]}', color_scale_rule_percent)
             # Create Sheets
             create_sheet(pivot_all, 'Все звонки')
             create_sheet(pivot_rpc, 'RPC')
@@ -127,10 +169,11 @@ def transform(csv_list: list, output_report_path):
         print(f'file: {name} -- Transformed 0')
 
     '''Run Script'''
-    df = prep_data(csv_list=csv_list)
-    df, rpc_df = create_pivot(df)
-    format_xlsx(df, rpc_df,
-                name=output_report_path)
+    df_main, df_rpc = construct_df(csv_list=csv_list)
+    format_xlsx(df_main.replace(0, pd.NA), df_rpc.replace(0, pd.NA),
+                name=output_report_path,
+                enable_filtering=True)
+    
     logger.info(f'%s {NAME}: exit code 0 (Success)', datetime.datetime.now())
     print('Exit Code 0')
     
@@ -151,5 +194,3 @@ if __name__ == '__main__':
         logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 3: (OOM Error)\n%s', oom)
     except Exception as ee:
         logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 1: (Python Error)\n%s', ee)
-    finally:
-        logger.info(f'%s {NAME}: script failed (OOM)', datetime.datetime.now())

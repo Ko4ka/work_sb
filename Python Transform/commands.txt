@@ -6,7 +6,7 @@ py -3.7 -m report_2_call --csv_list "C:\Users\Alex\Work_python\work_sb\Python Tr
 
 py -3.7 -m report_form_3 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\15GB.csv" --output_report_path "C:\Users\Alex\Work_python\work_sb\Python Transform\all_rpc_1.xlsx"
 
-py -3.7 -m report_form_2 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\1.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\2.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\3.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\4.csv" --output_report_path "oom.xlsx"
+py -3.7 -m report_form_3 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\1.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\2.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\3.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\4.csv" --output_report_path "отчет 3.xlsx"
 
 docker build -t my_pandas_container .
 
@@ -18,3 +18,5 @@ docker ps -a
 docker stats  16156f3ea879
 
 docker run --memory 8g my_pandas_container /usr/local/bin/python3.8 -m report_form_2 --csv_list "15GB.csv" --output_report_path "oom_test.xlsx"
+
+docker system prune --volumes --all
