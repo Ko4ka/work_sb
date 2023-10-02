@@ -10,7 +10,7 @@ fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
-NAME = 'badges_custom_pochta_bank.py'
+NAME = 'standard_marker_matrix.py'
 
 def transform(csv_list: list, output_report_path):
     def construct_marker_matrix(csv_list):
