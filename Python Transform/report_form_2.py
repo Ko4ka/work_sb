@@ -139,6 +139,9 @@ def transform(csv_list: list, output_report_path):
             return df
             # Create Summary DF
         df_summary = pd.DataFrame()
+        # Sort Dates
+        df_main.sort_index(axis=1, level=0, inplace=True)
+        df_rpc.sort_index(axis=1, level=0, inplace=True)
         df_summary = pd.concat([create_col(df_main, 'Срез: все звонки'),
                                 create_col(df_rpc, 'Срез: RPC') ], axis=1)
         # Returns Dataframe

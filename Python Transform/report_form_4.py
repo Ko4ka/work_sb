@@ -207,6 +207,9 @@ def transform(csv_list: list, output_report_path):
     df_main, df_rpc = construct_df(csv_list=csv_list)
     df_summary = construct_summary(df_main=df_main,
                                    df_rpc=df_rpc)
+    # Sort Dates
+    df_main.sort_index(axis=1, level=0, inplace=True)
+    df_rpc.sort_index(axis=1, level=0, inplace=True)
     format_xlsx(df_main, df_rpc, df_summary,
                 name=output_report_path, **COLORS)
     logger.info(f'%s {NAME}: exit code 0 (Success)', datetime.datetime.now())

@@ -141,11 +141,18 @@ def transform(csv_list: list, output_report_path):
                 workbook = writer.book
                 worksheet = writer.sheets[sheet_name]
                 white_fill_format = workbook.add_format({'text_wrap': False, 'bg_color': '#FFFFFF', 'border': 0})
+                table_fill_format = workbook.add_format({
+                'text_wrap': False,
+                'bg_color': '#FFFFFF',
+                'border': 1,  # Standard border
+                'border_color': '#BFBFBF'  # Line color
+                })
                 ref_format = workbook.add_format({'text_wrap': False, 'bold': True, 'align':'right', 'bg_color': '#FFFFFF', 'border': 0})
                 worksheet.set_column(0, 0, 5, white_fill_format)
                 worksheet.set_column(1, 1, 25, white_fill_format)
                 worksheet.set_column(2, 2, 100, white_fill_format)
-                worksheet.set_column(3, 100, 10, white_fill_format)
+                worksheet.set_column(3, pivot_table.shape[1]+1, 10, table_fill_format)
+                worksheet.set_column(pivot_table.shape[1]+1, 100, 10, white_fill_format)
                 format_tmp_start = []
                 format_tmp_stop = []
                 for row_num, row in enumerate(pivot_table['Запрос']):
@@ -170,6 +177,9 @@ def transform(csv_list: list, output_report_path):
 
     '''Run Script'''
     df_main, df_rpc = construct_df(csv_list=csv_list)
+    # Sort columns
+    df_main = df_main.sort_index(axis=1)
+    df_rpc = df_rpc.sort_index(axis=1)
     format_xlsx(df_main.replace(0, pd.NA), df_rpc.replace(0, pd.NA),
                 name=output_report_path,
                 enable_filtering=True)
