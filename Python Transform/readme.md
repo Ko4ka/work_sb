@@ -27,7 +27,40 @@ RUN pip install xlsxwriter
 
 # Описание скриптов
 
-1. Argparse - python парсер аргументов, переданных извне ([документация](https://docs.python.org/3/library/argparse.html)). Позволяет передать аргументы с бэка в формате `--csv_list` - список CSV файлов для трансформации + `--output_report_path` - путь для сохранения xlsx файла.
+1. Argparse - python парсер аргументов, переданных извне ([документация](https://docs.python.org/3/library/argparse.html)). Позволяет передать аргументы с бэка в формате `--csv_list` - список CSV файлов для трансформации + `--output_report_path` - путь для сохранения xlsx файла. Общий формат одного скрипта следующий:
+```
+import...
+...
+def transform(csv_list: list, output_report_path):
+  def construct_df(csv_list):
+  ...
+  def format_xlsx(dfs, **kwargs):
+    ...
+  # Run Script
+  df_main, df_rpc = construct_df(csv_list=csv_list)
+  df_summary = construct_summary(dfs)
+  # Sort columns
+  df = df.sort_index(axis=1)
+  format_xlsx(df, **COLORS)
+  logger.info(f'%s {NAME}: exit code 0 (Success)', datetime.datetime.now())
+  return 0
+
+if __name__ == '__main__':
+    try:
+        parser = argparse.ArgumentParser(description='Process CSV files and create an Excel pivot table with color scaling.')
+        # Add arguments for CSV list and output report path
+        parser.add_argument('--csv_list', nargs='+', help='List of CSV file paths', required=False)
+        parser.add_argument('--output_report_path', help='Path for the output Excel report', required=False)
+        # Parse the command-line arguments
+        args = parser.parse_args()
+        # Check Input
+        if not args.csv_list or not args.output_report_path:
+            raise ValueError(f'One or both required arguments are missing')
+        transform(csv_list=args.csv_list, output_report_path=args.output_report_path)
+    except Exception as ee:
+        logger.exception(f'{datetime.datetime.now()} {NAME}: exit code 1: (Script Error)\n%s', ee)
+
+```
 
 2. `transform(csv_list=args.csv_list, output_report_path=args.output_report_path)` - общая функция для трансформации файла, принимает аргументы, ничего не возвращает.
 
@@ -66,10 +99,10 @@ df_main, df_rpc = construct_df(csv_list=csv_list)
 for col in queries_list:
                 df[col] = df[col].astype('Int8')
 ```
-- Int8 а не int8, т.к. последний не поддерживает NaN и пустую строку ''
+- `Int8`` а не `int8` , т.к. последний не поддерживает NaN и пустую строку ''
 
 5. Скрипт логирует Exception-ы и другие события для информативности `logger.info(f'%s {NAME}: iteration #{iteration} done...', datetime.datetime.now())`
 
-6. Дополнительная документация
+6. Дополнительно
 
 - Работа с [xlsxwritter](https://xlsxwriter.readthedocs.io/index.html)
