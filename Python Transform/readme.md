@@ -33,16 +33,16 @@ import...
 ...
 def transform(csv_list: list, output_report_path):
   def construct_df(csv_list):
-  ...
+      ...
   def format_xlsx(dfs, **kwargs):
-    ...
+      ...
+      
   # Run Script
   df_main, df_rpc = construct_df(csv_list=csv_list)
   df_summary = construct_summary(dfs)
   # Sort columns
   df = df.sort_index(axis=1)
   format_xlsx(df, **COLORS)
-  logger.info(f'%s {NAME}: exit code 0 (Success)', datetime.datetime.now())
   return 0
 
 if __name__ == '__main__':
