@@ -61,6 +61,13 @@ df_main, df_rpc = construct_df(csv_list=csv_list)
                 name=output_report_path,
                 enable_filtering=True)
 ```
+Дополнительной оптимизацией может служить перекодировка соответствующих ячеек с `float64` на `Int8`:
+```
+for col in queries_list:
+                df[col] = df[col].astype('Int8')
+```
+- Int8 а не int8, т.к. последний не поддерживает NaN и пустую строку ''
+
 5. Скрипт логирует Exception-ы и другие события для информативности `logger.info(f'%s {NAME}: iteration #{iteration} done...', datetime.datetime.now())`
 
 6. Дополнительная документация
