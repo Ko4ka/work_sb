@@ -13,6 +13,12 @@ logger.addHandler(fh)
 NAME = 'report_form_3.py'
 
 def transform(csv_list: list, output_report_path):
+
+    def read_csv_in_chunks(file_path):
+        chunk_iter = pd.read_csv(file_path, chunksize=10 ** 6)  # 1 million rows at a time
+        for chunk in chunk_iter:
+            yield chunk
+
     def construct_df(csv_list):
         '''
         Linear time:
@@ -50,7 +56,7 @@ def transform(csv_list: list, output_report_path):
             # First, melt the DataFrame to convert 'Запрос_1', 'Запрос_2', 'Запрос_3' into rows
             melted_df = pd.melt(df, id_vars=['Имя колл-листа', 'Дата'], value_vars = queries_list, var_name='Запрос', value_name='Ошибки шт.')
             melted_df.reset_index(drop=True)
-            #del df
+            del df
             # Now, create a pivot table to calculate sums
             pivot_table = melted_df.pivot_table(
                 values='Ошибки шт.',
@@ -64,6 +70,7 @@ def transform(csv_list: list, output_report_path):
         df_main = pd.DataFrame()
         df_rpc = pd.DataFrame()    
         for iteration, i in enumerate(csv_list):
+            
             '''
             Take report files 1-by-1 and the merge then on external index from indices.py
             This will cut RAM cost 30 times (and make shit slower)
@@ -88,6 +95,7 @@ def transform(csv_list: list, output_report_path):
                 logger.warning('%s Warning: more than a single date in df...', datetime.datetime.now())
             # MEMORY MANAGEMENT: CONCAT TO INDEX AND DELETE
             main_pivot = create_pivot(df)
+            del df
             df_main = pd.concat([df_main, main_pivot], axis=1)
             del main_pivot  # Save 10MB
             rpc_pivot = create_pivot(rpc_df)
@@ -169,6 +177,9 @@ def transform(csv_list: list, output_report_path):
                 format_tmp_stop = format_tmp_stop[1:]
                 for num, i in enumerate(format_tmp_start):
                     worksheet.conditional_format(f'D{i}:AZ{format_tmp_stop[num]}', color_scale_rule_percent)
+                # Add bottom Border
+                worksheet.set_row(len(pivot_table.index)+1, 400, white_fill_format)
+                worksheet.set_row(len(pivot_table.index)+2, 400, white_fill_format)
             # Create Sheets
             create_sheet(pivot_all, 'Все звонки')
             create_sheet(pivot_rpc, 'RPC')

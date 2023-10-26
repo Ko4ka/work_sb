@@ -130,9 +130,9 @@ def transform(csv_list: list, output_report_path):
             df = pd.DataFrame(index=pd.MultiIndex.from_tuples(df.index), columns=pd.MultiIndex.from_tuples([(title,'')]))
             # Mask Error Count
             mask = calls_count == 0
+            df[(title, 'Зв.(шт.)')] = calls_count.replace(0,pd.NA)
             df[(title, 'Ошб.%')] = errors_percent
             df[(title, 'Ошб.(шт.)')] = errors_count[~mask]  # pd.mean considers NA = 0
-            df[(title, 'Зв.(шт.)')] = calls_count.replace(0,pd.NA)
             df[(title, 'Ср.АО')] = score
             del df[(title, '')]
             # Returns weighted sumary
@@ -198,6 +198,7 @@ def transform(csv_list: list, output_report_path):
                 bold_format = workbook.add_format({'bold': True,
                                                    'border': 1,
                                                    'valign': 'vcenter'})
+                border_fill_format = workbook.add_format({'bg_color': '#FFFFFF', 'border': 1, 'border_color': '#BFBFBF'})
                 # Apply the white background to the entire worksheet
                 worksheet.set_column(0, 0, 5, white_fill_format)
                 worksheet.set_column(1, 1, 25, white_index_format)
@@ -206,14 +207,17 @@ def transform(csv_list: list, output_report_path):
                 worksheet.merge_range('A1:A2', '№', bold_format)
                 worksheet.merge_range('B1:B2', 'Имя колл-листа', bold_format)
                 worksheet.merge_range('C1:C2', 'Статус робота', bold_format)
-                percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF', 'border': 0})
+                percentage_format = workbook.add_format({'num_format': '0.00%', 'bg_color': '#FFFFFF', 'border': 1, 'border_color': '#BFBFBF'})
 
                 for i, j in enumerate(pivot_table.head()):
                     if i>2:
-                        worksheet.set_column(i+1, i+1, 10, white_fill_format)
+                        worksheet.set_column(i+1, i+1, 10, border_fill_format)
                     if j[1] == 'Ошб.%':
                         worksheet.set_column(i+1, i+1, None, percentage_format)
                         worksheet.conditional_format(2, i+1, 999, i+1, color_scale_rule_errors)
+                # Add bottom Border
+                worksheet.set_row(len(pivot_table.index)+3, 400, white_fill_format)
+                worksheet.set_row(len(pivot_table.index)+4, 400, white_fill_format)
                 # Autosave
             # Create Sheets
             create_sheet(pivot_all, 'Все звонки')

@@ -4,6 +4,7 @@ Reports/
 *.xlsx
 *.csv
 example_reports/
+Импорт Газ/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

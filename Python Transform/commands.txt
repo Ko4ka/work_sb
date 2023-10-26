@@ -2,11 +2,11 @@ py -3.7 -m runner_test --csv_list "C:\Users\Alex\Work_python\work_sb\Python Tran
 
 python3.7 -m runner_test --csv_list "Reports/01-08.csv" "Reports/02-08.csv" --output_report_path "pivot_table_gradient_colorscale.xlsx"
 
-py -3.7 -m report_2_call --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\01-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\02-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\03-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\04-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\04-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\05-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\06-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\07-08.csv" --output_report_path "C:\Users\Alex\Work_python\work_sb\Python Transform\report_2_test.xlsx"
+py -3.7 -m report_form_1 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\01-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\02-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\03-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\04-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\04-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\05-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\06-08.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\07-08.csv" --output_report_path "C:\Users\Alex\Work_python\work_sb\Python Transform\report_2_fix.xlsx"
 
 py -3.7 -m report_form_3 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\15GB.csv" --output_report_path "C:\Users\Alex\Work_python\work_sb\Python Transform\all_rpc_1.xlsx"
 
-py -3.7 -m report_form_3 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\1.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\2.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\3.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\4.csv" --output_report_path "отчет 3.xlsx"
+py -3.7 -m report_form_1 --csv_list "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\1.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\2.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\3.csv" "C:\Users\Alex\Work_python\work_sb\Python Transform\Reports\4.csv" --output_report_path "отчет 1.xlsx"
 
 docker build -t my_pandas_container .
 
@@ -21,4 +21,5 @@ docker run --memory 8g my_pandas_container /usr/local/bin/python3.8 -m report_fo
 
 docker system prune --volumes --all
 
-py -3.7 -m badges_custom_pochta_bank --csv_list "C:\Users\Alex\Work_python\work_sb\Python Pilots\Reports\pochta_markers_full.csv" --output_report_path "test_pochta.xlsx"
+py -3.7 -m badges_custom_pochta_bank --csv_list "C:\Users\Alex\Work_python\work_sb\Python Pilots\Reports\почта_24.csv" --output_report_path "OCT_9-15_pochta.xlsx"
+

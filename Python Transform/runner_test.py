@@ -23,6 +23,7 @@ def transform(csv_list: list, output_report_path):
                     name: str = "pivot_table_gradient_colorscale.xlsx"):
         # Create an Excel writer and export the pivot table to an Excel file
         excel_file_path = name
+
         with pd.ExcelWriter(excel_file_path, engine='xlsxwriter') as writer:
             pivot_table.to_excel(writer, sheet_name=sheet, index=True)
 
@@ -36,14 +37,7 @@ def transform(csv_list: list, output_report_path):
 
             # Add a format for the header cells
             header_format = workbook.add_format(
-                {'bold': True, 'text_wrap': True, 'valign': 'top', 'border': 1, 'bg_color': '#EFEFEF',
-                 'align': 'center'})
-
-            # Set the column width and format for the header
-            for col_num, value in enumerate(pivot_table.columns.values):
-                worksheet.write(0, col_num + 1, value, header_format)
-                column_len = max(pivot_table[value].astype(str).str.len().max(), len(value)) + 2
-                worksheet.set_column(col_num + 1, col_num + 1, column_len)
+                {'bold': False, 'text_wrap': True, 'border': 1, 'bg_color': '#EFEFEF', 'align': 'center', 'valign': 'bottom', 'rotation': 270})
 
             # Apply gradient color scale to value cells
             # https://xlsxwriter.readthedocs.io/working_with_conditional_formats.html
@@ -52,11 +46,18 @@ def transform(csv_list: list, output_report_path):
                 'min_color': '#A6D86E',  # Green
                 'mid_color': '#FFFFFE',  # White (for NaN)
                 'max_color': '#e85f5f',  # Red
-                'min_type': 'num',
-                'mid_type': 'num',
-                'max_type': 'num'
+                'min_type': 'percentile',
+                'min_value': 0,
+                'mid_type': 'percentile',
+                'mid_value': 50,
+                'max_type': 'percentile',
+                'max_value': 100
             })
             print(f'file: {name} -- Transformed 0')
+            white_fill_format = workbook.add_format({'bg_color': '#FFFFFF', 'border': 0, 'align': 'center'})
+            worksheet.set_column(0, 0, 60, white_fill_format)
+            worksheet.set_column(1, 100, 6, white_fill_format)
+            worksheet.set_row(0, 50, header_format)
     try:
         # Concatenate all csv to a single biiig df
         df = pd.DataFrame()

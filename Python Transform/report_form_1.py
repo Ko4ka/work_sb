@@ -104,8 +104,8 @@ def transform(csv_list: list, output_report_path):
             score = pivot[pivot.index.str.contains('(средняя АО)')].apply(pd.to_numeric, errors='coerce')
             score = score.mean(axis=1,skipna=True, numeric_only=True)
             summary = pd.DataFrame(index=INDICES)
-            summary[f'Свод: {title}'] = pd.concat([calls, error_rate, errors, score], axis=0)
-            summary = summary.sort_index()
+            summary[f'Свод: {title}'] = pd.concat([calls, errors, error_rate, score], axis=0)
+            #summary = summary.sort_index()
             return summary
         # Create Summary DF
         df_summary = pd.DataFrame()
@@ -190,10 +190,15 @@ def transform(csv_list: list, output_report_path):
 
                 # Define a white fill format
                 white_fill_format = workbook.add_format({'bg_color': '#FFFFFF', 'border': 0})
-
+                border_fill_format = workbook.add_format({'bg_color': '#FFFFFF', 'border': 1, 'border_color': '#BFBFBF'})
+                # Add borders
+                for col_num, col in enumerate(pivot_table.head()):
+                    worksheet.set_column(col_num+1, col_num+1, 18, border_fill_format)
                 # Apply the white background to the entire worksheet
                 worksheet.set_column(0, 0, 60, white_fill_format)
-                worksheet.set_column(1, 100, 18, white_fill_format)
+                worksheet.set_column(len(pivot_table.head()), 100, 18, white_fill_format)
+                worksheet.set_row(len(pivot_table.index)+1, 400, white_fill_format)
+                worksheet.set_row(len(pivot_table.index)+2, 400, white_fill_format)
             # Create 2 sheets
             create_sheet(pivot_all, 'Все звонки')
             create_sheet(pivot_rpc, 'RPC')
