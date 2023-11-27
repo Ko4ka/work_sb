@@ -68,6 +68,7 @@ def transform(csv_list: list, output_report_path):
             merged_df.columns = pd.MultiIndex.from_tuples(multi_index)
             # Returns pivot
             return merged_df
+        
         # Create Base dfs for pivots
         multi_index = pd.MultiIndex.from_tuples(INDICES)
         multi_header = pd.MultiIndex.from_tuples([('tmp1','tmp2')])
@@ -130,9 +131,9 @@ def transform(csv_list: list, output_report_path):
             df = pd.DataFrame(index=pd.MultiIndex.from_tuples(df.index), columns=pd.MultiIndex.from_tuples([(title,'')]))
             # Mask Error Count
             mask = calls_count == 0
-            df[(title, 'Зв.(шт.)')] = calls_count.replace(0,pd.NA)
             df[(title, 'Ошб.%')] = errors_percent
             df[(title, 'Ошб.(шт.)')] = errors_count[~mask]  # pd.mean considers NA = 0
+            df[(title, 'Зв.(шт.)')] = calls_count.replace(0,pd.NA)
             df[(title, 'Ср.АО')] = score
             del df[(title, '')]
             # Returns weighted sumary
@@ -216,8 +217,10 @@ def transform(csv_list: list, output_report_path):
                         worksheet.set_column(i+1, i+1, None, percentage_format)
                         worksheet.conditional_format(2, i+1, 999, i+1, color_scale_rule_errors)
                 # Add bottom Border
-                worksheet.set_row(len(pivot_table.index)+3, 400, white_fill_format)
-                worksheet.set_row(len(pivot_table.index)+4, 400, white_fill_format)
+                worksheet.set_column(len(pivot_table.columns)+1,
+                                     len(pivot_table.columns)+400, None, white_fill_format)
+                worksheet.set_row(len(pivot_table.index)+3, len(pivot_table.index)+400, white_fill_format)
+                worksheet.set_row(len(pivot_table.index)+4, len(pivot_table.index)+400, white_fill_format)
                 # Autosave
             # Create Sheets
             create_sheet(pivot_all, 'Все звонки')
@@ -228,7 +231,7 @@ def transform(csv_list: list, output_report_path):
 
     '''Run Script'''
     df_main, df_rpc = construct_df(csv_list=csv_list)
-    df_summary = construct_summary(df_main, df_rpc)
+    df_summary = construct_summary(df_main.copy(), df_rpc.copy())
     format_xlsx(df_main, df_rpc, df_summary,
                 name=output_report_path,
                 **COLORS)
