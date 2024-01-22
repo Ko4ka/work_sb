@@ -2,7 +2,6 @@ import argparse
 import pandas as pd
 import logging
 import datetime
-import numpy as np
 
 # Add Logging
 logger = logging.getLogger()
@@ -11,7 +10,7 @@ fh = logging.FileHandler('transform_logs.log', encoding='utf-8')
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 # Add name
-NAME = 'report_form_2c_mx.py'
+NAME = 'report_form_2c_ms.py'
 
 def transform(csv_list: list, output_report_path):
     def construct_marker_matrix(csv_list):
@@ -25,33 +24,29 @@ def transform(csv_list: list, output_report_path):
             # Merge 2 frames
             df_add = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
             df = pd.concat([df, df_add], ignore_index=True)
-        # Replace Nans with empty strings to use ffill safely
-        exclude_columns = ['Маркер', 'Маркер - количество совпадений']
-        # Iterate over all columns and replace NaN where 'Дата звонка' is not NaN
-        for column in df.columns:
-            if column not in exclude_columns:
-                df[column] = np.where(df['Дата звонка'].notna(), df[column].fillna(''), df[column])
-        # Forward fill NaN values in 'Маркер' column
-        df.fillna(method='ffill', inplace=True)
-        #df.to_excel('123.xlsx', encoding='utf-8')
-        # OPTION: DROP ALL NOT CONTAINING
-        #df = df[df['Маркер'].str.contains('🦝')]
 
-        df = df.fillna(0)
-        df['Длительность звонка'] = pd.to_timedelta(df['Длительность звонка'])
-        df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
-        df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
-        df = df.reset_index(drop=True)
-        # Create a pivot table with 'Маркер' as columns and 'Маркер - количество совпадений' as values
-        index_cols = [col for col in df.columns if col not in ['Маркер', 'Маркер - количество совпадений']]
-        pivot_df = df.pivot_table(
-            index=index_cols,
-            columns='Маркер',
-            values='Маркер - количество совпадений').reset_index()
-        # Reset the index and rename the columns
-        pivot_df.columns.name = None  # Remove the columns' name
-        # Return a complete DF
-        return pivot_df
+        # Extracting suffixes from 'балл' and 'комментарий' columns
+        ball_columns = [col for col in df.columns if col.endswith('балл')]
+        comment_columns = [col for col in df.columns if col.endswith('комментарий')]
+        suffixes = sorted(set(col.replace(', балл', '').replace(', комментарий', '') for col in ball_columns + comment_columns))
+
+        # Creating a new ordered list of columns
+        new_order = []
+        for suffix in suffixes:
+            ball_col = f'{suffix}, балл'
+            comment_col = f'{suffix}, комментарий'  
+            if ball_col in df.columns:
+                new_order.append(ball_col)
+            if comment_col in df.columns:
+                new_order.append(comment_col)
+            else:
+                print(f'No matching комментарий column for {suffix}')
+        # Adding columns that do not end with 'балл' or 'комментарий'
+        new_order = [col for col in df.columns if col not in new_order] + new_order
+        # Reordering the DataFrame columns
+        df = df[new_order]
+
+        return df
 
     '''Run Script'''
     df = construct_marker_matrix(csv_list)
