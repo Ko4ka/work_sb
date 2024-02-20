@@ -89,7 +89,7 @@ def transform(csv_list: list, output_report_path):
             df['Длительность звонка'] = pd.to_timedelta(df['Длительность звонка'])
             df['Ошибки'] = df['Результат автооценки'] != 100
             # Fix Date
-            df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
+            df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S', errors='coerce')  #1712
             df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
             df = df.reset_index(drop=True)
             # Create RPC
