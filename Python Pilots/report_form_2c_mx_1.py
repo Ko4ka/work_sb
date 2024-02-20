@@ -39,7 +39,7 @@ def transform(csv_list: list, output_report_path):
 
         df = df.fillna(0)
         df['Длительность звонка'] = pd.to_timedelta(df['Длительность звонка'])
-        df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S')
+        df['Дата'] = pd.to_datetime(df['Дата звонка'], format='%d.%m.%Y %H:%M:%S', errors='coerce')
         df['Дата'] = df['Дата'].dt.strftime('%d.%m.%Y')
         df = df.reset_index(drop=True)
         # Create a pivot table with 'Маркер' as columns and 'Маркер - количество совпадений' as values
