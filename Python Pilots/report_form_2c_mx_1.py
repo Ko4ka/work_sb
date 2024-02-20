@@ -2,6 +2,7 @@ import argparse
 import pandas as pd
 import logging
 import datetime
+import numpy as np
 
 # Add Logging
 logger = logging.getLogger()
@@ -24,7 +25,12 @@ def transform(csv_list: list, output_report_path):
             # Merge 2 frames
             df_add = pd.read_csv(i, sep=';', encoding='utf-8',header=0)
             df = pd.concat([df, df_add], ignore_index=True)
-
+        # Replace Nans with empty strings to use ffill safely
+        exclude_columns = ['Маркер', 'Маркер - количество совпадений']
+        # Iterate over all columns and replace NaN where 'Дата звонка' is not NaN
+        for column in df.columns:
+            if column not in exclude_columns:
+                df[column] = np.where(df['Дата звонка'].notna(), df[column].fillna(''), df[column])
         # Forward fill NaN values in 'Маркер' column
         df.fillna(method='ffill', inplace=True)
 
